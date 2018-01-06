@@ -38,6 +38,13 @@
 #include <realsense_ros_camera/IMUInfo.h>
 #include <realsense_ros_slam/Reset.h>
 #include <realsense_ros_slam/SaveOutput.h>
+#include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/State.h>
+#include <mavros_msgs/CommandTOL.h>
+#include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
 
 namespace realsense_ros_slam
 {

@@ -13,7 +13,7 @@
     <arg name="enable_depth" value="true"/>
     <arg name="enable_color" value="false"/>
   </include>
-  <include file="$(find realsense_ros_slam)/launch/setup_demo.launch">
+  <include file="$(find realsense_ros_slam)/launch/elikos_setup_odometry.launch">
     <arg name="manager" value="$(arg manager)"/>
     <arg name="load_relocalization_map" value="$(arg load_relocalization_map)"/>
     <arg name="load_occupancy_map" value="$(arg load_occupancy_map)"/>

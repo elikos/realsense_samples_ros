@@ -38,6 +38,10 @@ std::vector< CvPoint > g_relocalizationPointStack;
 
 ros::ServiceServer reset_srv, save_output_srv;
 
+tf::TransformListener tf_listener_;
+tf::TransformBroadcaster tf_broadcaster_;
+tf::StampedTransform fcu2zr300_;
+
 namespace realsense_ros_slam
 {
 
@@ -380,9 +384,31 @@ public:
     accuracyMsg.header.stamp = ros::Time(feTimeStamp);
     accuracyMsg.header.seq = feFrameNum;
     accuracyMsg.tracking_accuracy = (uint32_t)accuracy;
+
+    // Pour la sécurité, on fait atterir le quad si le tracking fail.
+    if (accuracyMsg.tracking_accuracy == TrackingAccuracy::TRACKING_ACCURACY_FAILED)
+    {
+        ros::ServiceClient landingClient_;
+        mavros_msgs::CommandTOL landingCmd_;
+        ros::NodeHandle nh;
+        landingClient_ = nh.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/land");
+        landingCmd_.request.min_pitch = 0.0;
+        landingCmd_.request.yaw = 0.0;
+        landingCmd_.request.latitude = 0.0;
+        landingCmd_.request.longitude = 0.0;
+        landingCmd_.request.altitude = 0.0;
+        // Atterrir
+        landingClient_.call(landingCmd_);
+        while(!landingCmd_.response.success)
+        {
+            landingClient_.call(landingCmd_);
+            // TODO éventuellement faire bipper le pixhawk pour avertir qu'il souhaite se poser.
+        }
+    }
+
     pub_accuracy.publish(accuracyMsg);
 
-    // Publish 2D pose
+    // Publish 3D pose
     Eigen::Vector3f gravity = Eigen::Vector3f(0, 1, 0);
     stRobotPG robotPG;
     convertToPG(cameraPose, gravity, robotPG);
@@ -395,19 +421,32 @@ public:
     // Publish odometry
     if (is_pub_odom)
     {
+      // Odometry msg
       nav_msgs::Odometry odom;
       odom.header.stamp = ros::Time(feTimeStamp);
       odom.header.seq = feFrameNum;
-      odom.header.frame_id = "odom";
+      odom.header.frame_id = "elikos_zr300";
       odom.pose.pose.position.x = pose2d.x;
       odom.pose.pose.position.y = pose2d.y;
       tf2::Quaternion quat(tf2::Vector3(0, 0, 1), pose2d.theta); // Rotate around the z axis by angle theta
       tf2::convert<tf2::Quaternion, geometry_msgs::Quaternion>(quat, odom.pose.pose.orientation);
       pub_odom.publish(odom);
+
+      // Odometry tf
+      tf::Quaternion quat_camera;
+      tf::quaternionMsgToTF(pose_msg.pose.orientation, quat_camera);
+      tf::Transform zr300origin2zr300 = tf::Transform(quat_camera, tf::Vector3(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z));
+      tf::Transform zr300origin2fcu = zr300origin2zr300 * fcu2zr300_.inverse();
+
+      tf::StampedTransform zr300origin2fcu_stamped = tf::StampedTransform(zr300origin2fcu, 
+          ros::Time::now(), "elikos_zr300_origin", "elikos_vision");
+      
+      tf_broadcaster_.sendTransform(zr300origin2fcu_stamped);
+
     }
 
     // Publish occupancy map
-    int wmap = 512;
+    /*int wmap = 512;
     int hmap = 512;
     if (!occ_map)
     {
@@ -446,7 +485,7 @@ public:
     map_msg.info.height     = hmap;
     map_msg.info.origin.position.x = -(wmap / 2) * map_resolution;
     map_msg.info.origin.position.y = -(hmap / 2) * map_resolution;
-    pub_map.publish(map_msg);
+    pub_map.publish(map_msg);*/
   }
 
   ~slam_event_handler()
@@ -509,6 +548,14 @@ void SNodeletSlam::onInit()
   actual_config = {};
   
   slam_ = boost::make_unique<rs::slam::slam>();
+
+   try {
+      tf_listener_.waitForTransform("elikos_fcu", "elikos_zr300", ros::Time::now(), ros::Duration(5.0));
+      tf_listener_.lookupTransform("elikos_fcu", "elikos_zr300", ros::Time(0), fcu2zr300_);
+   }
+      catch (tf::TransformException &ex) {
+      ROS_ERROR("ZR300 init failed!!!! Exception : %s",ex.what());
+   }
   
   ROS_INFO("end of onInit");
 }//end onInit
