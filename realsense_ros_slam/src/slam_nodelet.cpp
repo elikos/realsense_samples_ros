@@ -440,9 +440,11 @@ public:
       tf::Transform zr300origin_to_fcu = zr300origin_to_zr300link * fcu_to_zr300link_.inverse();
       
       tf::Transform corner_to_zr300origin = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0.14)) * fcu_to_zr300link_;
-      
-      tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu;
+      // Attention: correction hardcodee.
+      tf::Transform pitch_correction = tf::Transform(tf::Quaternion(0, -0.199, 0, 0.98), tf::Vector3(0, 0, 0));
 
+      tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu * pitch_correction;
+      
       tf::StampedTransform corner_to_fcu_stamped = tf::StampedTransform(corner_to_fcu, 
           ros::Time::now(), "elikos_corner", "elikos_vision");
       
