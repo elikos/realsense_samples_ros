@@ -12,6 +12,11 @@
     <arg name="hoi_max"                 default="0.1" />
     <arg name="doi_min"                 default="0.3" />
     <arg name="doi_max"                 default="3.0" />
+    <arg name="camera_x"                default="0.0" />
+    <arg name="camera_y"                default="0.199" />
+    <arg name="camera_z"                default="0.0" />
+    <arg name="camera_w"                default="0.98" />
+    <arg name="start_altitude"          default="0.14" />
     <arg name="load_relocalization_map" default=""/>
     <arg name="load_occupancy_map"      default=""/>
   
@@ -31,6 +36,11 @@
         <param name="doi_max"   type="double"  value="$(arg doi_max)" />
         <param name="load_relocalization_map" value="$(arg load_relocalization_map)"/>
         <param name="load_occupancy_map" value="$(arg load_occupancy_map)"/>
+        <param name="camera_x"   type="double"  value="$(arg camera_x)" />
+        <param name="camera_y"   type="double"  value="$(arg camera_y)" />
+        <param name="camera_z"   type="double"  value="$(arg camera_z)" />
+        <param name="camera_w"   type="double"  value="$(arg camera_w)" />
+        <param name="start_altitude"   type="double"  value="$(arg start_altitude)" />
     </node>
      <!--launch-prefix="gdb -ex run --><!--args"/-->
 

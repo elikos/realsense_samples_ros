@@ -28,6 +28,7 @@ std::string trajectory_filename_out, relocalization_filename_out, occupancyFilen
 std::string topic_camera_pose, topic_reloc_pose, topic_pose2d, topic_map, topic_tracking_accuracy, topic_odom;
 double map_resolution, hoi_min, hoi_max, doi_min, doi_max;
 bool is_pub_odom = false;
+double start_altitude, camera_x, camera_y, camera_z, camera_w;
 
 ros::Publisher pub_pose2d, pub_pose, pub_map, pub_accuracy, pub_reloc, pub_odom;
 geometry_msgs::Pose2D pose2d;
@@ -438,12 +439,12 @@ public:
       tf::quaternionMsgToTF(pose_msg.pose.orientation, quat_camera);
       tf::Transform zr300origin_to_zr300link = tf::Transform(quat_camera, tf::Vector3(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z));
       tf::Transform zr300origin_to_fcu = zr300origin_to_zr300link * fcu_to_zr300link_.inverse();
-      
-      tf::Transform corner_to_zr300origin = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0.14)) * fcu_to_zr300link_;
-      // Attention: correction hardcodee.
-      tf::Transform pitch_correction = tf::Transform(tf::Quaternion(0, -0.199, 0, 0.98), tf::Vector3(0, 0, 0));
 
-      tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu * pitch_correction;
+      tf::Transform corner_to_zr300origin = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, start_altitude)) * fcu_to_zr300link_;
+
+      tf::Transform camera_attitude = tf::Transform(tf::Quaternion(camera_x, camera_y, camera_z, camera_w), tf::Vector3(0, 0, 0));
+
+      tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu * camera_attitude.inverse();
       
       tf::StampedTransform corner_to_fcu_stamped = tf::StampedTransform(corner_to_fcu, 
           ros::Time::now(), "elikos_corner", "elikos_vision");
@@ -532,6 +533,11 @@ void SNodeletSlam::onInit()
   pnh.param< std::string >("topic_tracking_accuracy", topic_tracking_accuracy, "tracking_accuracy");
   pnh.param< std::string >("topic_odom", topic_odom, "odom");
   pnh.param< bool >("publish_odometry", is_pub_odom, false);
+  pnh.param< double >("start_altitude", start_altitude, 0.0);
+  pnh.param< double >("camera_x", camera_x, 0.0);
+  pnh.param< double >("camera_y", camera_y, 0.0);
+  pnh.param< double >("camera_z", camera_z, 0.0);
+  pnh.param< double >("camera_w", camera_w, 1.0);
 
   nh = getMTNodeHandle();
   pub_pose = nh.advertise< geometry_msgs::PoseStamped >(topic_camera_pose, 1, true);
