@@ -40,7 +40,7 @@ ros::ServiceServer reset_srv, save_output_srv;
 
 tf::TransformListener tf_listener_;
 tf::TransformBroadcaster tf_broadcaster_;
-tf::StampedTransform fcu2zr300_;
+tf::StampedTransform fcu_to_zr300link_;
 
 namespace realsense_ros_slam
 {
@@ -386,8 +386,9 @@ public:
     accuracyMsg.tracking_accuracy = (uint32_t)accuracy;
 
     // Pour la sécurité, on fait atterir le quad si le tracking fail.
-    if (accuracyMsg.tracking_accuracy == TrackingAccuracy::TRACKING_ACCURACY_FAILED)
+    /*if (accuracyMsg.tracking_accuracy == TrackingAccuracy::TRACKING_ACCURACY_FAILED)
     {
+        ROS_ERROR_STREAM("Le tracking de la camera a echoue!! Atterissage immediat!");
         ros::ServiceClient landingClient_;
         mavros_msgs::CommandTOL landingCmd_;
         ros::NodeHandle nh;
@@ -404,7 +405,7 @@ public:
             landingClient_.call(landingCmd_);
             // TODO éventuellement faire bipper le pixhawk pour avertir qu'il souhaite se poser.
         }
-    }
+    }*/
 
     pub_accuracy.publish(accuracyMsg);
 
@@ -425,7 +426,7 @@ public:
       nav_msgs::Odometry odom;
       odom.header.stamp = ros::Time(feTimeStamp);
       odom.header.seq = feFrameNum;
-      odom.header.frame_id = "elikos_zr300";
+      odom.header.frame_id = "zr300_odom";
       odom.pose.pose.position.x = pose2d.x;
       odom.pose.pose.position.y = pose2d.y;
       tf2::Quaternion quat(tf2::Vector3(0, 0, 1), pose2d.theta); // Rotate around the z axis by angle theta
@@ -435,13 +436,17 @@ public:
       // Odometry tf
       tf::Quaternion quat_camera;
       tf::quaternionMsgToTF(pose_msg.pose.orientation, quat_camera);
-      tf::Transform zr300origin2zr300 = tf::Transform(quat_camera, tf::Vector3(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z));
-      tf::Transform zr300origin2fcu = zr300origin2zr300 * fcu2zr300_.inverse();
-
-      tf::StampedTransform zr300origin2fcu_stamped = tf::StampedTransform(zr300origin2fcu, 
-          ros::Time::now(), "elikos_zr300_origin", "elikos_vision");
+      tf::Transform zr300origin_to_zr300link = tf::Transform(quat_camera, tf::Vector3(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z));
+      tf::Transform zr300origin_to_fcu = zr300origin_to_zr300link * fcu_to_zr300link_.inverse();
       
-      tf_broadcaster_.sendTransform(zr300origin2fcu_stamped);
+      tf::Transform corner_to_zr300origin = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0.14)) * fcu_to_zr300link_;
+      
+      tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu;
+
+      tf::StampedTransform corner_to_fcu_stamped = tf::StampedTransform(corner_to_fcu, 
+          ros::Time::now(), "elikos_corner", "elikos_vision");
+      
+      tf_broadcaster_.sendTransform(corner_to_fcu_stamped);
 
     }
 
@@ -550,8 +555,8 @@ void SNodeletSlam::onInit()
   slam_ = boost::make_unique<rs::slam::slam>();
 
    try {
-      tf_listener_.waitForTransform("elikos_fcu", "elikos_zr300", ros::Time::now(), ros::Duration(5.0));
-      tf_listener_.lookupTransform("elikos_fcu", "elikos_zr300", ros::Time(0), fcu2zr300_);
+      tf_listener_.waitForTransform("elikos_fcu", "elikos_zr300_base_link", ros::Time::now(), ros::Duration(5.0));
+      tf_listener_.lookupTransform("elikos_fcu", "elikos_zr300_base_link", ros::Time(0), fcu_to_zr300link_);
    }
       catch (tf::TransformException &ex) {
       ROS_ERROR("ZR300 init failed!!!! Exception : %s",ex.what());

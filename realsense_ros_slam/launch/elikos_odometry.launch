@@ -18,4 +18,5 @@
     <arg name="load_relocalization_map" value="$(arg load_relocalization_map)"/>
     <arg name="load_occupancy_map" value="$(arg load_occupancy_map)"/>
   </include>
+  <node pkg="tf" type="static_transform_publisher" name="zr300_front_broadcaster" args="0.3626 -0.046 0.0506 -0.59 0.59 -00.39 0.39 elikos_fcu elikos_zr300_base_link 100" />
 </launch>
