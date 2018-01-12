@@ -32,7 +32,7 @@ double start_altitude, camera_x, camera_y, camera_z, camera_w;
 int vision_tf_rate_divider = 5;
 int vision_tf_rate_counter = 0;
 
-ros::Publisher pub_pose2d, pub_pose, pub_map, pub_accuracy, pub_reloc, pub_odom;
+ros::Publisher pub_pose2d, pub_pose, pub_map, pub_accuracy, pub_reloc, pub_odom, pub_vision_pose;
 geometry_msgs::Pose2D pose2d;
 
 IplImage * ipNavMap = NULL;
@@ -449,13 +449,29 @@ public:
       tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu * camera_attitude.inverse();
 
       corner_to_fcu.setRotation(corner_to_fcu.getRotation().normalize());
+
+      tf::StampedTransform local_to_corner;
+      tf_listener_.lookupTransform("elikos_local_origin", "elikos_corner", ros::Time(0), local_to_corner);
+
+      tf::Transform local_to_fcu = local_to_corner * corner_to_fcu;
       
-      tf::StampedTransform corner_to_fcu_stamped = tf::StampedTransform(corner_to_fcu, 
-          ros::Time::now(), "elikos_corner", "elikos_vision");
+      tf::StampedTransform local_to_fcu_stamped = tf::StampedTransform(local_to_fcu, 
+          ros::Time::now(), "elikos_local_origin", "elikos_vision");
       
       if (vision_tf_rate_counter%vision_tf_rate_divider==0)
       {
-        tf_broadcaster_.sendTransform(corner_to_fcu_stamped);
+        geometry_msgs::PoseStamped local_to_fcu_pose;
+        geometry_msgs::TransformStamped local_to_fcu_transform_msg;
+        tf::transformStampedTFToMsg (local_to_fcu_stamped,  local_to_fcu_transform_msg);
+        local_to_fcu_pose.pose.position.x = local_to_fcu_transform_msg.transform.translation.x;
+        local_to_fcu_pose.pose.position.y = local_to_fcu_transform_msg.transform.translation.y;
+        local_to_fcu_pose.pose.position.z = local_to_fcu_transform_msg.transform.translation.z;
+        local_to_fcu_pose.pose.orientation = local_to_fcu_transform_msg.transform.rotation;
+        local_to_fcu_pose.header.stamp = ros::Time::now();
+        local_to_fcu_pose.header.frame_id = "elikos_local_origin";
+        pub_vision_pose.publish(local_to_fcu_pose);
+
+        //tf_broadcaster_.sendTransform(corner_to_fcu_stamped);
         vision_tf_rate_counter = 1;
       }
       else
@@ -558,6 +574,7 @@ void SNodeletSlam::onInit()
   pub_map = nh.advertise< nav_msgs::OccupancyGrid >(topic_map, 1, true);
   pub_accuracy = nh.advertise< realsense_ros_slam::TrackingAccuracy >(topic_tracking_accuracy, 1, true);
   if (is_pub_odom) pub_odom = nh.advertise< nav_msgs::Odometry >(topic_odom, 1, true);
+  pub_vision_pose = nh.advertise< geometry_msgs::PoseStamped >("/mavros/vision_pose/pose", 1, true);
   pkgpath = ros::package::getPath("realsense_ros_slam") + "/";
 
   sub_depthInfo = nh.subscribe("camera/depth/camera_info", 1, &SNodeletSlam::depthInfoCallback, this);
