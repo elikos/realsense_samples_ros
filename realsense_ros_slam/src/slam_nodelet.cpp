@@ -29,6 +29,8 @@ std::string topic_camera_pose, topic_reloc_pose, topic_pose2d, topic_map, topic_
 double map_resolution, hoi_min, hoi_max, doi_min, doi_max;
 bool is_pub_odom = false;
 double start_altitude, camera_x, camera_y, camera_z, camera_w;
+int vision_tf_rate_divider = 5;
+int vision_tf_rate_counter = 0;
 
 ros::Publisher pub_pose2d, pub_pose, pub_map, pub_accuracy, pub_reloc, pub_odom;
 geometry_msgs::Pose2D pose2d;
@@ -445,12 +447,21 @@ public:
       tf::Transform camera_attitude = tf::Transform(tf::Quaternion(camera_x, camera_y, camera_z, camera_w), tf::Vector3(0, 0, 0));
 
       tf::Transform corner_to_fcu = corner_to_zr300origin * zr300origin_to_fcu * camera_attitude.inverse();
+
+      corner_to_fcu.setRotation(corner_to_fcu.getRotation().normalize());
       
       tf::StampedTransform corner_to_fcu_stamped = tf::StampedTransform(corner_to_fcu, 
           ros::Time::now(), "elikos_corner", "elikos_vision");
       
-      tf_broadcaster_.sendTransform(corner_to_fcu_stamped);
-
+      if (vision_tf_rate_counter%vision_tf_rate_divider==0)
+      {
+        tf_broadcaster_.sendTransform(corner_to_fcu_stamped);
+        vision_tf_rate_counter = 1;
+      }
+      else
+      {
+        vision_tf_rate_counter++;
+      }
     }
 
     // Publish occupancy map
@@ -538,6 +549,7 @@ void SNodeletSlam::onInit()
   pnh.param< double >("camera_y", camera_y, 0.0);
   pnh.param< double >("camera_z", camera_z, 0.0);
   pnh.param< double >("camera_w", camera_w, 1.0);
+  pnh.param< int >("vision_tf_rate_divider", vision_tf_rate_divider, 1);
 
   nh = getMTNodeHandle();
   pub_pose = nh.advertise< geometry_msgs::PoseStamped >(topic_camera_pose, 1, true);

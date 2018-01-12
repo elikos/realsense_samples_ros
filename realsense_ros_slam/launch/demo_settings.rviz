@@ -9,6 +9,7 @@ Panels:
         - /Pose1
         - /Odometry1
         - /TF1
+        - /TF1/Status1
         - /TF1/Frames1
       Splitter Ratio: 0.495712012
     Tree Height: 707
@@ -115,35 +116,43 @@ Visualization Manager:
       Enabled: true
       Frame Timeout: 15
       Frames:
-        All Enabled: true
+        All Enabled: false
         base_link:
-          Value: true
+          Value: false
         camera_depth_frame:
-          Value: true
+          Value: false
         camera_depth_optical_frame:
-          Value: true
+          Value: false
         camera_fisheye_frame:
-          Value: true
+          Value: false
         camera_fisheye_optical_frame:
-          Value: true
+          Value: false
         camera_link:
-          Value: true
+          Value: false
         camera_rgb_frame:
-          Value: true
+          Value: false
         camera_rgb_optical_frame:
-          Value: true
+          Value: false
+        elikos_attitude:
+          Value: false
         elikos_corner:
           Value: true
         elikos_fcu:
           Value: true
+        elikos_local_origin:
+          Value: false
         elikos_vision:
           Value: true
         elikos_zr300_base_link:
-          Value: true
+          Value: false
+        local_origin:
+          Value: false
+        local_origin_ned:
+          Value: false
         map:
-          Value: true
+          Value: false
         odom:
-          Value: true
+          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -151,10 +160,13 @@ Visualization Manager:
       Show Names: true
       Tree:
         elikos_corner:
-          elikos_vision:
+          elikos_attitude:
             {}
-        elikos_fcu:
-          elikos_zr300_base_link:
+          elikos_local_origin:
+            elikos_fcu:
+              elikos_zr300_base_link:
+                {}
+          elikos_vision:
             {}
       Update Interval: 0
       Value: true
@@ -182,7 +194,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.50795913
+      Distance: 9.32258034
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -197,10 +209,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.304797322
+      Pitch: 1.04979694
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.61491966
+      Yaw: 3.93309546
     Saved: ~
 Window Geometry:
   Displays:
